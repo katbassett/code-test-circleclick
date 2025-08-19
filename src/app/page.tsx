@@ -2,6 +2,8 @@
 
 "use client";
 
+import CategoryMultiSelect, { Option } from "@/components/CategoryMultiSelect";
+
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { getPosts, getCategories } from "./lib/wp";
@@ -21,7 +23,7 @@ export default function Home() {
   const [posts, setPosts] = useState<WPPost[]>([]);
   const [categories, setCategories] = useState<WPCategory[]>([]);
   const [search, setSearch] = useState("");
-  const [catIds, setCatIds] = useState<number[]>([]); 
+  const [catIds, setCatIds] = useState<number[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -34,7 +36,11 @@ export default function Home() {
     })();
   }, []);
 
-  //multi-category filter logic
+  const catOptions: Option[] = useMemo(
+    () => categories.map((c) => ({ value: c.id, label: c.name })),
+    [categories]
+  );
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return posts.filter((p) => {
@@ -44,11 +50,6 @@ export default function Home() {
       return matchesTitle && matchesCats;
     });
   }, [posts, search, catIds]);
-
-  function onCatsChange(e: React.ChangeEvent<HTMLSelectElement>) {
-    const ids = Array.from(e.target.selectedOptions).map((o) => Number(o.value));
-    setCatIds(ids);
-  }
 
   return (
     <main className="max-w-4xl mx-auto px-4 py-8">
@@ -65,21 +66,11 @@ export default function Home() {
         />
 
         <div className="flex items-start gap-2">
-          <select
-            multiple
-            value={catIds.map(String)}
-            onChange={onCatsChange}
-            className="border rounded px-3 py-2 min-w-[220px]"
-            aria-label="Filter by categories (hold Cmd/Ctrl to select multiple)"
-            size={Math.min(8, Math.max(4, categories.length))} // show a few rows
-          >
-            {categories.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
-
+          <CategoryMultiSelect
+            options={catOptions}
+            value={catIds}
+            onChange={setCatIds}
+          />
           <button
             type="button"
             onClick={() => setCatIds([])}
@@ -92,12 +83,12 @@ export default function Home() {
       </div>
 
       {/* Loading */}
-      {loading && <div className="py-8 text-sm text-gray-500">Loading…</div>}
+      {loading && <div className="py-8 text-sm text-black">Loading…</div>}
 
       {/* Results */}
       <div className="grid gap-6">
         {!loading && filtered.length === 0 && (
-          <p className="text-sm text-gray-500">No posts match your filters.</p>
+          <p className="text-sm text-black">No posts match your filters.</p>
         )}
 
         {filtered.map((post) => {
@@ -115,11 +106,12 @@ export default function Home() {
               <img src={img} alt={post.title.rendered} className="w-full h-56 object-cover" />
               <div className="p-4 bg-white">
                 <h2
-                  className="text-xl font-semibold mb-1"
+                  className="text-black font-semibold mb-1"
                   dangerouslySetInnerHTML={{ __html: post.title.rendered }}
                 />
-                <p className="text-gray-500 text-sm mb-3">{date}</p>
-                <Link href={`/${post.slug}`}>Read more →</Link>
+                <p className="text-black text-sm mb-3">{date}</p>
+                <Link href={`/${post.slug}`} className="text-black text-sm"> Read more </Link>
+
               </div>
             </article>
           );
