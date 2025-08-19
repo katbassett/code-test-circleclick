@@ -1,103 +1,113 @@
-import Image from "next/image";
+/* Author: Kat Bassett */
+/* Home page: lists posts with client-side search + category filter */
+
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { getPosts, getCategories } from "./lib/wp";
+
+type WPPost = {
+  id: number;
+  slug: string;
+  date: string;
+  title: { rendered: string };
+  categories: number[];
+  _embedded?: { ["wp:featuredmedia"]?: Array<{ source_url?: string }> };
+};
+
+type WPCategory = { id: number; name: string };
 
 export default function Home() {
-  return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+  const [posts, setPosts] = useState<WPPost[]>([]);
+  const [categories, setCategories] = useState<WPCategory[]>([]);
+  const [search, setSearch] = useState("");
+  const [catId, setCatId] = useState<number | "">("");
+  const [loading, setLoading] = useState(true);
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
-        </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
+  useEffect(() => {
+    (async () => {
+      setLoading(true);
+      const [p, c] = await Promise.all([getPosts(), getCategories()]);
+      setPosts(p);
+      setCategories(c);
+      setLoading(false);
+    })();
+  }, []);
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return posts.filter((p) => {
+      const matchesTitle = p.title.rendered.toLowerCase().includes(q);
+      const matchesCat = catId === "" ? true : p.categories.includes(catId as number);
+      return matchesTitle && matchesCat;
+    });
+  }, [posts, search, catId]);
+
+  return (
+    <main className="max-w-4xl mx-auto px-4 py-8">
+      <h1 className="text-3xl font-bold mb-6">Blog Posts</h1>
+
+      {/* Controls */}
+      <div className="flex gap-3 mb-6">
+        <input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search by title…"
+          className="flex-1 border rounded px-3 py-2"
+          aria-label="Search posts by title"
+        />
+        <select
+          value={catId === "" ? "" : String(catId)}
+          onChange={(e) => setCatId(e.target.value ? Number(e.target.value) : "")}
+          className="border rounded px-3 py-2"
+          aria-label="Filter by category"
         >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
+          <option value="">All categories</option>
+          {categories.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.name}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {/* Loading */}
+      {loading && <div className="py-8 text-sm text-gray-500">Loading…</div>}
+
+      {/* Results */}
+      <div className="grid gap-6">
+        {!loading && filtered.length === 0 && (
+          <p className="text-sm text-gray-500">No posts match your filters.</p>
+        )}
+
+        {filtered.map((post) => {
+          const date = new Date(post.date).toLocaleDateString("en-US", {
+            month: "short",
+            day: "2-digit",
+            year: "numeric",
+          });
+          const img =
+            post._embedded?.["wp:featuredmedia"]?.[0]?.source_url ??
+            "https://via.placeholder.com/1200x400?text=No+image";
+
+          return (
+            <article key={post.id} className="rounded border overflow-hidden">
+              <img src={img} alt={post.title.rendered} className="w-full h-56 object-cover" />
+              <div className="p-4 bg-white">
+                <h2
+                  className="text-xl font-semibold mb-1"
+                  dangerouslySetInnerHTML={{ __html: post.title.rendered }}
+                />
+                <p className="text-gray-500 text-sm mb-3">{date}</p>
+                <Link href={`/posts/${post.slug}`} className="text-blue-600 hover:underline">
+                  Read more →
+                </Link>
+              </div>
+            </article>
+          );
+        })}
+      </div>
+    </main>
   );
 }
