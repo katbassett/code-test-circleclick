@@ -1,5 +1,4 @@
 /* Author: Kat Bassett */
-/* Home page: lists posts with client-side search + category filter */
 
 "use client";
 
@@ -22,7 +21,7 @@ export default function Home() {
   const [posts, setPosts] = useState<WPPost[]>([]);
   const [categories, setCategories] = useState<WPCategory[]>([]);
   const [search, setSearch] = useState("");
-  const [catId, setCatId] = useState<number | "">("");
+  const [catIds, setCatIds] = useState<number[]>([]); 
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -35,21 +34,28 @@ export default function Home() {
     })();
   }, []);
 
+  //multi-category filter logic
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return posts.filter((p) => {
       const matchesTitle = p.title.rendered.toLowerCase().includes(q);
-      const matchesCat = catId === "" ? true : p.categories.includes(catId as number);
-      return matchesTitle && matchesCat;
+      const matchesCats =
+        catIds.length === 0 || p.categories.some((id) => catIds.includes(id));
+      return matchesTitle && matchesCats;
     });
-  }, [posts, search, catId]);
+  }, [posts, search, catIds]);
+
+  function onCatsChange(e: React.ChangeEvent<HTMLSelectElement>) {
+    const ids = Array.from(e.target.selectedOptions).map((o) => Number(o.value));
+    setCatIds(ids);
+  }
 
   return (
     <main className="max-w-4xl mx-auto px-4 py-8">
       <h1 className="text-3xl font-bold mb-6">Blog Posts</h1>
 
       {/* Controls */}
-      <div className="flex gap-3 mb-6">
+      <div className="flex flex-col sm:flex-row gap-3 mb-6">
         <input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
@@ -57,19 +63,32 @@ export default function Home() {
           className="flex-1 border rounded px-3 py-2"
           aria-label="Search posts by title"
         />
-        <select
-          value={catId === "" ? "" : String(catId)}
-          onChange={(e) => setCatId(e.target.value ? Number(e.target.value) : "")}
-          className="border rounded px-3 py-2"
-          aria-label="Filter by category"
-        >
-          <option value="">All categories</option>
-          {categories.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.name}
-            </option>
-          ))}
-        </select>
+
+        <div className="flex items-start gap-2">
+          <select
+            multiple
+            value={catIds.map(String)}
+            onChange={onCatsChange}
+            className="border rounded px-3 py-2 min-w-[220px]"
+            aria-label="Filter by categories (hold Cmd/Ctrl to select multiple)"
+            size={Math.min(8, Math.max(4, categories.length))} // show a few rows
+          >
+            {categories.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+
+          <button
+            type="button"
+            onClick={() => setCatIds([])}
+            className="border rounded px-3 py-2"
+            aria-label="Clear category selection"
+          >
+            Clear
+          </button>
+        </div>
       </div>
 
       {/* Loading */}
@@ -100,9 +119,7 @@ export default function Home() {
                   dangerouslySetInnerHTML={{ __html: post.title.rendered }}
                 />
                 <p className="text-gray-500 text-sm mb-3">{date}</p>
-                <Link href={`/posts/${post.slug}`} className="text-blue-600 hover:underline">
-                  Read more →
-                </Link>
+                <Link href={`/${post.slug}`}>Read more →</Link>
               </div>
             </article>
           );
